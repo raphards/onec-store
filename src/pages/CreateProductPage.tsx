@@ -12,6 +12,7 @@ import {
   Sparkles, 
   ArrowLeft, 
   Loader2, 
+  Plus, 
   Image as ImageIcon 
 } from 'lucide-react';
 import { api } from '../services/api';
@@ -29,7 +30,37 @@ export const CreateProductPage: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [successCreated, setSuccessCreated] = useState<any | null>(null);
 
-  const presetCategories = ['Bebidas', 'Lanches', 'Combos', 'Sobremesas', 'Geral'];
+  const [categories, setCategories] = useState<string[]>(['Bebidas', 'Lanches', 'Combos', 'Sobremesas', 'Geral']);
+  const [isAddingCategory, setIsAddingCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [isSubmittingCategory, setIsSubmittingCategory] = useState(false);
+
+  React.useEffect(() => {
+    api.getCategories().then((data) => {
+      if (data && data.length > 0) {
+        setCategories(data);
+        if (!data.includes(category)) {
+          setCategory(data[0]);
+        }
+      }
+    }).catch(console.error);
+  }, []);
+
+  const handleAddNewCategory = async () => {
+    if (!newCategoryName.trim()) return;
+    setIsSubmittingCategory(true);
+    try {
+      const added = await api.createCategory(newCategoryName.trim());
+      setCategories((prev) => Array.from(new Set([...prev, added])).sort());
+      setCategory(added);
+      setNewCategoryName('');
+      setIsAddingCategory(false);
+    } catch (err: any) {
+      alert('Erro ao cadastrar categoria: ' + err.message);
+    } finally {
+      setIsSubmittingCategory(false);
+    }
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -310,37 +341,92 @@ export const CreateProductPage: React.FC = () => {
               </div>
             </div>
 
-            {/* 4. CATEGORIA */}
+            {/* 4. CATEGORIA (LISTA SUSPENSA COM BOTÃO + PARA ADICIONAR) */}
             <div>
-              <label className="text-xs font-extrabold uppercase tracking-wider text-slate-600 block mb-2">
-                4. Categoria
-              </label>
-              
-              {/* Category pills */}
-              <div className="flex flex-wrap gap-1.5 mb-2">
-                {presetCategories.map((cat) => (
-                  <button
-                    key={cat}
-                    type="button"
-                    onClick={() => setCategory(cat)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                      category === cat
-                        ? 'bg-slate-900 text-white shadow-xs'
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                    }`}
-                  >
-                    {cat}
-                  </button>
-                ))}
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs font-extrabold uppercase tracking-wider text-slate-600 block">
+                  4. Categoria do Produto *
+                </label>
+                <span className="text-[11px] text-slate-400">
+                  Define o filtro na tela de vendas
+                </span>
               </div>
 
-              <input
-                type="text"
-                placeholder="Ou digite outra categoria personalizada..."
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="w-full px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
+              {/* Dropdown Select + Button to Add New Category */}
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1">
+                  <select
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                    className="w-full px-4 py-3 rounded-2xl bg-slate-50 border border-slate-200 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all appearance-none cursor-pointer shadow-2xs"
+                  >
+                    {categories.map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat}
+                      </option>
+                    ))}
+                  </select>
+                  {/* Chevron down indicator */}
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-500">
+                    <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20">
+                      <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+                    </svg>
+                  </div>
+                </div>
+
+                {/* + Button to Add New Category */}
+                <button
+                  type="button"
+                  onClick={() => setIsAddingCategory((v) => !v)}
+                  className="w-12 h-12 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center shadow-md shadow-emerald-600/20 active:scale-95 transition-all shrink-0"
+                  title="Cadastrar Nova Categoria"
+                >
+                  <Plus className="w-5 h-5 stroke-[3]" />
+                </button>
+              </div>
+
+              {/* Inline Form to Add New Category */}
+              <AnimatePresence>
+                {isAddingCategory && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="mt-3 p-3.5 rounded-2xl bg-emerald-50/70 border border-emerald-200 space-y-2.5 overflow-hidden"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-emerald-900">
+                        Cadastrar Nova Categoria
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setIsAddingCategory(false)}
+                        className="text-emerald-700 hover:text-emerald-900 text-xs font-semibold"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        placeholder="Ex: Sucos, Doces, Porções, Cafés..."
+                        value={newCategoryName}
+                        onChange={(e) => setNewCategoryName(e.target.value)}
+                        className="flex-1 px-3.5 py-2 rounded-xl bg-white border border-emerald-300 text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      />
+                      <button
+                        type="button"
+                        disabled={isSubmittingCategory || !newCategoryName.trim()}
+                        onClick={handleAddNewCategory}
+                        className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold shadow-xs active:scale-95 transition-transform disabled:opacity-50"
+                      >
+                        {isSubmittingCategory ? 'Salvando...' : 'Salvar'}
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
             {/* 5. DESCRIÇÃO (OPCIONAL) */}

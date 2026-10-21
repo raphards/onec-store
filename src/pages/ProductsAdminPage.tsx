@@ -40,6 +40,11 @@ export const ProductsAdminPage: React.FC = () => {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
+  const [categories, setCategories] = useState<string[]>(['Bebidas', 'Lanches', 'Combos', 'Sobremesas', 'Geral']);
+  const [isAddingCategory, setIsAddingCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [isSubmittingCategory, setIsSubmittingCategory] = useState(false);
+
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => {
@@ -50,12 +55,33 @@ export const ProductsAdminPage: React.FC = () => {
   const fetchProducts = async () => {
     setLoading(true);
     try {
-      const data = await api.getProducts();
-      setProducts(data);
+      const [prodsData, catsData] = await Promise.all([
+        api.getProducts(),
+        api.getCategories().catch(() => ['Bebidas', 'Lanches', 'Combos', 'Sobremesas', 'Geral']),
+      ]);
+      setProducts(prodsData);
+      setCategories(catsData);
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleAddNewCategory = async () => {
+    if (!newCategoryName.trim()) return;
+    setIsSubmittingCategory(true);
+    try {
+      const added = await api.createCategory(newCategoryName.trim());
+      setCategories((prev) => Array.from(new Set([...prev, added])).sort());
+      setCategory(added);
+      setNewCategoryName('');
+      setIsAddingCategory(false);
+      showToast(`Categoria "${added}" criada com sucesso!`);
+    } catch (err: any) {
+      alert('Erro ao cadastrar categoria: ' + err.message);
+    } finally {
+      setIsSubmittingCategory(false);
     }
   };
 
@@ -516,15 +542,58 @@ export const ProductsAdminPage: React.FC = () => {
 
                   <div>
                     <label className="text-xs font-bold text-slate-700 block mb-1">
-                      Categoria
+                      Categoria *
                     </label>
-                    <input
-                      type="text"
-                      value={category}
-                      onChange={(e) => setCategory(e.target.value)}
-                      placeholder="Ex: Bebidas"
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    />
+                    <div className="flex items-center gap-1.5">
+                      <select
+                        value={category}
+                        onChange={(e) => setCategory(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+                      >
+                        {categories.map((c) => (
+                          <option key={c} value={c}>
+                            {c}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        onClick={() => setIsAddingCategory((v) => !v)}
+                        className="w-8 h-8 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center shrink-0 shadow-xs"
+                        title="Cadastrar Nova Categoria"
+                      >
+                        <Plus className="w-4 h-4 stroke-[3]" />
+                      </button>
+                    </div>
+
+                    {isAddingCategory && (
+                      <div className="mt-2 p-2 bg-emerald-50 rounded-xl border border-emerald-200 space-y-1.5">
+                        <input
+                          type="text"
+                          placeholder="Nova categoria..."
+                          value={newCategoryName}
+                          onChange={(e) => setNewCategoryName(e.target.value)}
+                          className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-emerald-300 bg-white focus:outline-none font-bold"
+                        />
+                        <div className="flex justify-end gap-1">
+                          <button
+                            type="button"
+                            onClick={() => setIsAddingCategory(false)}
+                            className="px-2 py-0.5 text-[11px] text-slate-500 hover:text-slate-700"
+                          >
+                            Cancelar
+                          </button>
+                          <button
+                            type="button"
+                            disabled={isSubmittingCategory || !newCategoryName.trim()}
+                            onClick={handleAddNewCategory}
+                            className="px-2.5 py-0.5 text-[11px] bg-slate-900 text-white rounded-md font-bold"
+                          >
+                            {isSubmittingCategory ? '...' : 'Salvar'}
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 

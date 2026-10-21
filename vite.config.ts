@@ -47,6 +47,10 @@ function apiDevPlugin(): Plugin {
             const { default: handler } = await import('./api/upload.ts');
             return await handler(req, res);
           }
+          if (pathname === '/api/categories' || pathname.startsWith('/api/categories/')) {
+            const { default: handler } = await import('./api/categories.ts');
+            return await handler(req, res);
+          }
           if (pathname === '/api/init-db' || pathname.startsWith('/api/init-db/')) {
             const { default: handler } = await import('./api/init-db.ts');
             return await handler(req, res);

@@ -19,6 +19,32 @@ export const api = {
     }
   },
 
+  // Categories
+  async getCategories(): Promise<string[]> {
+    try {
+      const res = await fetch(`${API_BASE}/categories`);
+      if (!res.ok) throw new Error('Falha ao carregar categorias');
+      return await res.json();
+    } catch (err) {
+      console.warn('API getCategories fallback:', err);
+      return ['Bebidas', 'Lanches', 'Combos', 'Sobremesas', 'Geral'];
+    }
+  },
+
+  async createCategory(name: string): Promise<string> {
+    const res = await fetch(`${API_BASE}/categories`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Erro ao cadastrar categoria');
+    }
+    const data = await res.json();
+    return data.name;
+  },
+
   async createProduct(product: Omit<Product, 'id' | 'created_at' | 'is_active'>): Promise<Product> {
     const res = await fetch(`${API_BASE}/products`, {
       method: 'POST',

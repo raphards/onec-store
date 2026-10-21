@@ -6,11 +6,20 @@ const connectionString = process.env.DATABASE_URL || 'postgresql://neondb_owner:
 export const sql = neon(connectionString);
 
 /**
- * Initializes the database tables and populates initial products if empty.
+ * Initializes the database tables and populates initial products & categories if empty.
  */
 export async function initDb() {
   try {
-    // 1. Create products table
+    // 1. Create categories table
+    await sql`
+      CREATE TABLE IF NOT EXISTS categories (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(100) UNIQUE NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      );
+    `;
+
+    // 2. Create products table
     await sql`
       CREATE TABLE IF NOT EXISTS products (
         id SERIAL PRIMARY KEY,
@@ -25,7 +34,7 @@ export async function initDb() {
       );
     `;
 
-    // 2. Create sales table
+    // 3. Create sales table
     await sql`
       CREATE TABLE IF NOT EXISTS sales (
         id VARCHAR(50) PRIMARY KEY,
@@ -44,12 +53,25 @@ export async function initDb() {
       );
     `;
 
-    // 3. Create index for fast date querying
+    // 4. Create index for fast date querying
     await sql`
       CREATE INDEX IF NOT EXISTS idx_sales_created_at ON sales(created_at DESC);
     `;
 
-    // 4. Seed default products if empty
+    // 5. Seed default categories if empty
+    const catCountRes = await sql`SELECT COUNT(*)::int AS count FROM categories`;
+    if ((catCountRes[0]?.count || 0) === 0) {
+      const defaultCategories = ['Bebidas', 'Lanches', 'Combos', 'Sobremesas', 'Geral'];
+      for (const cat of defaultCategories) {
+        await sql`
+          INSERT INTO categories (name) 
+          VALUES (${cat}) 
+          ON CONFLICT (name) DO NOTHING
+        `;
+      }
+    }
+
+    // 6. Seed default products if empty
     const productCountResult = await sql`SELECT COUNT(*)::int AS count FROM products`;
     const count = productCountResult[0]?.count || 0;
 

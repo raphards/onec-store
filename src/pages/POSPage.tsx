@@ -18,6 +18,7 @@ import { CheckoutModal } from '../components/CheckoutModal';
 export const POSPage: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [apiCategories, setApiCategories] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('Todos');
@@ -28,12 +29,14 @@ export const POSPage: React.FC = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [prodsData, statsData] = await Promise.all([
+      const [prodsData, statsData, catsData] = await Promise.all([
         api.getProducts(),
         api.getStats().catch(() => null),
+        api.getCategories().catch(() => []),
       ]);
       setProducts(prodsData);
       setStats(statsData);
+      setApiCategories(catsData);
     } catch (err) {
       console.error(err);
     } finally {
@@ -89,8 +92,13 @@ export const POSPage: React.FC = () => {
 
   const top2Products = getTop2Products();
 
-  // Unique categories list
-  const categories = ['Todos', ...Array.from(new Set(products.map((p) => p.category || 'Geral')))];
+  // Unique categories list (Todos + all dynamically registered categories)
+  const categories = [
+    'Todos',
+    ...Array.from(new Set([...apiCategories, ...products.map((p) => p.category || 'Geral')]))
+      .filter((c) => Boolean(c) && c !== 'Todos')
+      .sort(),
+  ];
 
   // Filtered products for main grid
   const filteredProducts = activeProducts.filter((p) => {
@@ -263,14 +271,14 @@ export const POSPage: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Price & Quick Tap */}
-                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between mt-1">
-                    <span className="text-base sm:text-lg font-extrabold text-emerald-600">
-                      R$ {price.toFixed(2).replace('.', ',')}
-                    </span>
-                    <span className="text-[10px] font-extrabold px-2 py-1 rounded-lg bg-emerald-600 text-white flex items-center gap-1 shadow-xs">
-                      <Plus className="w-3 h-3 stroke-[3]" /> Vender
-                    </span>
+                  {/* Price */}
+                  <div className="pt-2 border-t border-slate-100 flex items-baseline justify-between mt-1">
+                    <div>
+                      <span className="text-[10px] text-slate-400 font-semibold block leading-none">Preço</span>
+                      <span className="text-base sm:text-lg font-extrabold text-emerald-600 tracking-tight whitespace-nowrap block mt-0.5">
+                        R$ {price.toFixed(2).replace('.', ',')}
+                      </span>
+                    </div>
                   </div>
                 </motion.div>
               );
