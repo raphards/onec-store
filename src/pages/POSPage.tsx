@@ -14,12 +14,14 @@ import {
 } from 'lucide-react';
 import { api } from '../services/api';
 import { useCart } from '../context/CartContext';
+import { useToast } from '../context/ToastContext';
 import type { Product, Sale, DashboardStats } from '../types';
 import { CheckoutModal } from '../components/CheckoutModal';
 import { CartCheckoutModal } from '../components/CartCheckoutModal';
 
 export const POSPage: React.FC = () => {
   const { cartItems, totalItems, totalAmount, isCartOpen, setIsCartOpen } = useCart();
+  const { showToast } = useToast();
   const [products, setProducts] = useState<Product[]>([]);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [apiCategories, setApiCategories] = useState<string[]>([]);
@@ -28,8 +30,6 @@ export const POSPage: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>('Todos');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [lastSaleAlert, setLastSaleAlert] = useState<Sale | null>(null);
-  const [cartToast, setCartToast] = useState<{ message: string } | null>(null);
 
   const fetchData = async () => {
     setLoading(true);
@@ -120,21 +120,12 @@ export const POSPage: React.FC = () => {
   };
 
   const handleSaleSuccess = (sale: Sale) => {
-    setLastSaleAlert(sale);
     // Refresh stats to immediately update top sellers
     api.getStats().then(setStats).catch(() => {});
-    setTimeout(() => {
-      setLastSaleAlert((current) => (current?.id === sale.id ? null : current));
-    }, 6000);
   };
 
   const handleAddToCartToast = (product: Product, quantity: number) => {
-    setCartToast({
-      message: `${quantity}x ${product.name} adicionado ao carrinho!`,
-    });
-    setTimeout(() => {
-      setCartToast(null);
-    }, 3500);
+    showToast(`${quantity}x ${product.name} adicionado ao carrinho!`, 'info', 'Carrinho de Vendas');
   };
 
   // Motion variants for dynamic entry from different directions
@@ -170,45 +161,6 @@ export const POSPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-
-      {/* Cart Toast Notification */}
-      <AnimatePresence>
-        {cartToast && (
-          <motion.div
-            initial={{ opacity: 0, y: -20, scale: 0.9 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -20, scale: 0.9 }}
-            className="fixed top-18 right-4 z-50 max-w-sm bg-slate-900 text-white p-3.5 rounded-2xl shadow-xl flex items-center gap-3 border border-slate-700"
-          >
-            <div className="w-8 h-8 rounded-xl bg-emerald-500 text-white flex items-center justify-center shrink-0">
-              <ShoppingBag className="w-4 h-4" />
-            </div>
-            <p className="text-xs font-bold">{cartToast.message}</p>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Sale Toast Notification */}
-      <AnimatePresence>
-        {lastSaleAlert && (
-          <motion.div
-            initial={{ opacity: 0, y: -20, scale: 0.9 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -20, scale: 0.9 }}
-            className="fixed top-18 right-4 z-40 max-w-sm bg-emerald-700 text-white p-3.5 rounded-2xl shadow-xl flex items-center gap-3 border border-emerald-600"
-          >
-            <div className="w-9 h-9 rounded-xl bg-emerald-600 flex items-center justify-center shrink-0">
-              <CheckCircle2 className="w-5 h-5 text-white" />
-            </div>
-            <div className="flex-1 text-xs">
-              <p className="font-bold">Venda #{lastSaleAlert.id} Concluída!</p>
-              <p className="opacity-90">
-                {lastSaleAlert.quantity}x {lastSaleAlert.product_name} • R$ {Number(lastSaleAlert.total_amount).toFixed(2).replace('.', ',')}
-              </p>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* 1. CONTROLES NO TOPO (NO LUGAR DA TOOLBAR NO MOBILE): BUSCA & PÍLULAS DE CATEGORIA */}
       <div className="space-y-3 pt-1 sm:pt-0">

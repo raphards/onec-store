@@ -18,6 +18,7 @@ import {
 import { QRCodeSVG } from 'qrcode.react';
 import confetti from 'canvas-confetti';
 import { useCart } from '../context/CartContext';
+import { useToast } from '../context/ToastContext';
 import type { PaymentMethod, Sale } from '../types';
 
 interface CartCheckoutModalProps {
@@ -32,6 +33,7 @@ export const CartCheckoutModal: React.FC<CartCheckoutModalProps> = ({
   onSuccessSale,
 }) => {
   const { cartItems, updateQuantity, removeFromCart, clearCart, totalItems, totalAmount } = useCart();
+  const { showToast } = useToast();
 
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('PIX');
   const [amountReceived, setAmountReceived] = useState<string>('');
@@ -62,7 +64,11 @@ export const CartCheckoutModal: React.FC<CartCheckoutModalProps> = ({
     if (isSubmitting || cartItems.length === 0) return;
 
     if (paymentMethod === 'DINHEIRO' && numAmountReceived < totalAmount) {
-      alert(`O valor entregue pelo cliente deve ser de no mínimo R$ ${totalAmount.toFixed(2).replace('.', ',')}`);
+      showToast(
+        `O valor entregue pelo cliente deve ser de no mínimo R$ ${totalAmount.toFixed(2).replace('.', ',')}`,
+        'warning',
+        'Valor Insuficiente'
+      );
       return;
     }
 
@@ -125,11 +131,18 @@ export const CartCheckoutModal: React.FC<CartCheckoutModalProps> = ({
         console.log(e);
       }
 
+      // Show Toast Notification!
+      showToast(
+        `Venda de ${totalItems} itens (R$ ${totalAmount.toFixed(2).replace('.', ',')}) registrada com sucesso no banco de dados!`,
+        'success',
+        'Venda Concluída'
+      );
+
       setCompletedSale(saleData);
       clearCart();
       onSuccessSale(saleData);
     } catch (err: any) {
-      alert('Erro ao finalizar venda do carrinho: ' + (err.message || 'Tente novamente'));
+      showToast('Erro ao finalizar venda: ' + (err.message || 'Tente novamente'), 'error', 'Erro na Venda');
     } finally {
       setIsSubmitting(false);
     }
@@ -179,14 +192,16 @@ export const CartCheckoutModal: React.FC<CartCheckoutModalProps> = ({
               <button
                 type="button"
                 onClick={clearCart}
-                className="text-xs font-semibold text-rose-600 hover:text-rose-700 hover:bg-rose-50 px-2 py-1 rounded-lg transition-colors"
+                disabled={isSubmitting}
+                className="text-xs font-semibold text-rose-600 hover:text-rose-700 hover:bg-rose-50 px-2 py-1 rounded-lg transition-colors disabled:opacity-40"
               >
                 Limpar
               </button>
             )}
             <button
-              onClick={onClose}
-              className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 transition-colors"
+              onClick={isSubmitting ? undefined : onClose}
+              disabled={isSubmitting}
+              className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 disabled:opacity-40 flex items-center justify-center text-slate-500 transition-colors"
             >
               <X className="w-4 h-4" />
             </button>
@@ -194,7 +209,34 @@ export const CartCheckoutModal: React.FC<CartCheckoutModalProps> = ({
         </div>
 
         {/* Modal Body */}
-        <div className="p-5 overflow-y-auto space-y-4 flex-1">
+        <div className="p-5 overflow-y-auto space-y-4 flex-1 relative">
+
+          {/* DATABASE INTEGRATION LOADING OVERLAY */}
+          {isSubmitting && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="absolute inset-0 bg-white/95 backdrop-blur-xs z-30 flex flex-col items-center justify-center p-6 text-center space-y-4"
+            >
+              <div className="relative">
+                <div className="w-16 h-16 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 shadow-md">
+                  <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
+                </div>
+                <span className="absolute -bottom-1 -right-1 flex h-4 w-4">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-4 w-4 bg-emerald-500"></span>
+                </span>
+              </div>
+              <div className="space-y-1">
+                <h4 className="text-base font-extrabold text-slate-900">
+                  Registrando Venda no Banco de Dados...
+                </h4>
+                <p className="text-xs text-slate-500 max-w-xs font-medium">
+                  Integrando os {totalItems} itens com o banco Neon PostgreSQL.
+                </p>
+              </div>
+            </motion.div>
+          )}
 
           {/* COMPLETED SALE RECEIPT VIEW */}
           {completedSale ? (
@@ -555,7 +597,7 @@ export const CartCheckoutModal: React.FC<CartCheckoutModalProps> = ({
                   {isSubmitting ? (
                     <>
                       <Loader2 className="w-5 h-5 animate-spin" />
-                      <span>Registrando no Neon...</span>
+                      <span>Integrando com o Banco de Dados...</span>
                     </>
                   ) : (
                     <>

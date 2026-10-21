@@ -18,17 +18,20 @@ import {
   ExternalLink 
 } from 'lucide-react';
 import { api } from '../services/api';
+import { DeleteConfirmationModal } from '../components/DeleteConfirmationModal';
+import { useToast } from '../context/ToastContext';
 import type { Product } from '../types';
 
 export const ProductsAdminPage: React.FC = () => {
   const navigate = useNavigate();
+  const { showToast } = useToast();
 
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [previewProduct, setPreviewProduct] = useState<Product | null>(null);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [productToDelete, setProductToDelete] = useState<Product | null>(null);
 
   // Form state
   const [name, setName] = useState('');
@@ -44,13 +47,6 @@ export const ProductsAdminPage: React.FC = () => {
   const [isAddingCategory, setIsAddingCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [isSubmittingCategory, setIsSubmittingCategory] = useState(false);
-
-  const showToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => {
-      setToastMessage((cur) => (cur === msg ? null : cur));
-    }, 4000);
-  };
 
   const fetchProducts = async () => {
     setLoading(true);
@@ -77,9 +73,9 @@ export const ProductsAdminPage: React.FC = () => {
       setCategory(added);
       setNewCategoryName('');
       setIsAddingCategory(false);
-      showToast(`Categoria "${added}" criada com sucesso!`);
+      showToast(`Categoria "${added}" criada com sucesso!`, 'success');
     } catch (err: any) {
-      alert('Erro ao cadastrar categoria: ' + err.message);
+      showToast('Erro ao cadastrar categoria: ' + err.message, 'error');
     } finally {
       setIsSubmittingCategory(false);
     }
@@ -125,7 +121,7 @@ export const ProductsAdminPage: React.FC = () => {
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !price) {
-      alert('Preencha o nome e o preço do produto.');
+      showToast('Preencha o nome e o preço do produto.', 'warning');
       return;
     }
 
@@ -152,7 +148,7 @@ export const ProductsAdminPage: React.FC = () => {
           description,
           image_url: finalImageUrl,
         });
-        showToast(`Produto "${name}" atualizado com sucesso!`);
+        showToast(`Produto "${name}" atualizado com sucesso!`, 'success');
       } else {
         await api.createProduct({
           name,
@@ -161,13 +157,13 @@ export const ProductsAdminPage: React.FC = () => {
           description,
           image_url: finalImageUrl,
         });
-        showToast(`Produto "${name}" cadastrado com sucesso!`);
+        showToast(`Produto "${name}" cadastrado com sucesso!`, 'success');
       }
 
       setIsModalOpen(false);
       fetchProducts();
     } catch (err: any) {
-      alert('Erro ao salvar produto: ' + (err.message || 'Erro desconhecido'));
+      showToast('Erro ao salvar produto: ' + (err.message || 'Erro desconhecido'), 'error');
     } finally {
       setIsSaving(false);
     }
@@ -187,7 +183,8 @@ export const ProductsAdminPage: React.FC = () => {
     showToast(
       newActiveState
         ? `"${prod.name}" agora está ATIVO no PDV!`
-        : `"${prod.name}" foi OCULTADO do PDV!`
+        : `"${prod.name}" foi OCULTADO do PDV!`,
+      'info'
     );
 
     try {
@@ -202,37 +199,24 @@ export const ProductsAdminPage: React.FC = () => {
     }
   };
 
-  const handleDeleteProduct = async (id: number, e?: React.MouseEvent) => {
+  const handleOpenDelete = (prod: Product, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
-    if (!confirm('Deseja realmente excluir este produto?')) return;
+    setProductToDelete(prod);
+  };
+
+  const handleConfirmDelete = async (id: number) => {
     try {
       await api.deleteProduct(id);
-      showToast('Produto excluído com sucesso.');
+      showToast('Produto excluído com sucesso do catálogo!', 'success', 'Item Removido');
+      setProductToDelete(null);
       fetchProducts();
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      showToast('Erro ao excluir produto: ' + (err.message || 'Tente novamente'), 'error', 'Erro');
     }
   };
 
   return (
     <div className="space-y-6">
-
-      {/* Toast Alert */}
-      <AnimatePresence>
-        {toastMessage && (
-          <motion.div
-            initial={{ opacity: 0, y: -20, scale: 0.9 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -20, scale: 0.9 }}
-            className="fixed top-18 right-4 z-50 max-w-sm bg-slate-900 text-white p-3.5 rounded-2xl shadow-xl flex items-center gap-3 border border-slate-700"
-          >
-            <div className="w-8 h-8 rounded-xl bg-emerald-500 text-white flex items-center justify-center shrink-0">
-              <Check className="w-4 h-4 stroke-[3]" />
-            </div>
-            <p className="text-xs font-bold">{toastMessage}</p>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* Header and Add Button */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -373,7 +357,7 @@ export const ProductsAdminPage: React.FC = () => {
                     <button
                       type="button"
                       title="Excluir"
-                      onClick={(e) => handleDeleteProduct(prod.id, e)}
+                      onClick={(e) => handleOpenDelete(prod, e)}
                       className="w-8 h-8 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 flex items-center justify-center transition-colors"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -705,6 +689,14 @@ export const ProductsAdminPage: React.FC = () => {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Modal Bonito de Confirmação de Exclusão */}
+      <DeleteConfirmationModal
+        product={productToDelete}
+        isOpen={Boolean(productToDelete)}
+        onClose={() => setProductToDelete(null)}
+        onConfirm={handleConfirmDelete}
+      />
 
     </div>
   );

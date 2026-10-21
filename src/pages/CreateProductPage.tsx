@@ -16,9 +16,11 @@ import {
   Image as ImageIcon 
 } from 'lucide-react';
 import { api } from '../services/api';
+import { useToast } from '../context/ToastContext';
 
 export const CreateProductPage: React.FC = () => {
   const navigate = useNavigate();
+  const { showToast } = useToast();
 
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
@@ -55,8 +57,9 @@ export const CreateProductPage: React.FC = () => {
       setCategory(added);
       setNewCategoryName('');
       setIsAddingCategory(false);
+      showToast(`Categoria "${added}" cadastrada com sucesso!`, 'success');
     } catch (err: any) {
-      alert('Erro ao cadastrar categoria: ' + err.message);
+      showToast('Erro ao cadastrar categoria: ' + err.message, 'error');
     } finally {
       setIsSubmittingCategory(false);
     }
@@ -86,18 +89,18 @@ export const CreateProductPage: React.FC = () => {
     e.preventDefault();
 
     if (!name.trim()) {
-      alert('Por favor, informe o nome do produto.');
+      showToast('Por favor, informe o nome do produto.', 'warning');
       return;
     }
 
     const numPrice = parseFloat(price.replace(',', '.')) || 0;
     if (numPrice <= 0) {
-      alert('Por favor, informe um valor válido para o produto.');
+      showToast('Por favor, informe um valor válido para o produto.', 'warning');
       return;
     }
 
     if (!imagePreview && !imageUrl && !imageFile) {
-      alert('Por favor, adicione uma foto para o produto.');
+      showToast('Por favor, adicione uma foto para o produto.', 'warning');
       return;
     }
 
@@ -122,9 +125,10 @@ export const CreateProductPage: React.FC = () => {
         image_url: finalImageUrl,
       });
 
+      showToast(`Produto "${newProduct.name}" cadastrado com sucesso!`, 'success', 'Produto Criado');
       setSuccessCreated(newProduct);
     } catch (err: any) {
-      alert('Erro ao cadastrar produto: ' + (err.message || 'Tente novamente'));
+      showToast('Erro ao cadastrar produto: ' + (err.message || 'Tente novamente'), 'error');
     } finally {
       setIsSaving(false);
     }
