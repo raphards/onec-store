@@ -12,12 +12,14 @@ import {
   Loader2, 
   Sparkles, 
   ShoppingBag, 
-  ReceiptText 
+  ReceiptText,
+  Zap 
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import confetti from 'canvas-confetti';
 import { useCart } from '../context/CartContext';
 import { useToast } from '../context/ToastContext';
+import { usePix } from '../context/PixContext';
 import type { Product, PaymentMethod, Sale } from '../types';
 
 interface CheckoutModalProps {
@@ -37,6 +39,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 }) => {
   const { addToCart } = useCart();
   const { showToast } = useToast();
+  const { activeKey, activeKeyId, keys, switchActiveKey, generatePayload, openContingencyModal } = usePix();
   const [quantity, setQuantity] = useState(1);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('PIX');
   const [amountReceived, setAmountReceived] = useState<string>('');
@@ -63,8 +66,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const changeAmount = Math.max(0, numAmountReceived - subtotal);
   const isCashInsufficient = paymentMethod === 'DINHEIRO' && numAmountReceived > 0 && numAmountReceived < subtotal;
 
-  // Pix string generator
-  const pixPayload = `00020126580014BR.GOV.BCB.PIX0136onec-store@pix.com.br520400005303986540${subtotal.toFixed(2)}5802BR5910ONEC STORE6009SAO PAULO62070503***6304C89F`;
+  // Pix string generator com cálculo dinâmico e chave ativa do banco de dados
+  const pixPayload = generatePayload(subtotal);
 
   const handleCopyPix = () => {
     navigator.clipboard.writeText(pixPayload);
@@ -446,6 +449,55 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                     transition={{ duration: 0.2 }}
                     className="p-4 rounded-2xl bg-slate-50 border border-slate-200/90 text-center space-y-3"
                   >
+                    {/* PIX Contingency Switcher (Toggle) */}
+                    <div className="bg-white p-2.5 rounded-2xl border border-slate-200/90 shadow-2xs space-y-2 text-left">
+                      <div className="flex items-center justify-between text-xs font-semibold px-1">
+                        <span className="flex items-center gap-1.5 text-slate-800">
+                          <Zap className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+                          <span>Conta PIX (Contingência)</span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={openContingencyModal}
+                          className="text-emerald-700 hover:text-emerald-800 text-[11px] font-bold hover:underline"
+                        >
+                          Gerenciar
+                        </button>
+                      </div>
+
+                      {/* 3 Keys Toggle Buttons */}
+                      <div className="grid grid-cols-3 gap-1.5 bg-slate-100/90 p-1 rounded-xl">
+                        {keys.map((k) => {
+                          const isKeyActive = k.id === activeKeyId;
+                          return (
+                            <button
+                              key={k.id}
+                              type="button"
+                              onClick={() => switchActiveKey(k.id)}
+                              className={`py-1.5 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                                isKeyActive
+                                  ? 'bg-white text-slate-900 shadow-xs border border-slate-200 font-extrabold ring-1 ring-emerald-500/30'
+                                  : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200/50'
+                              }`}
+                            >
+                              <span
+                                className="w-2 h-2 rounded-full shrink-0"
+                                style={{ backgroundColor: k.bankColor }}
+                              />
+                              <span className="truncate">{k.name}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      <div className="text-[11px] text-slate-500 flex items-center justify-between px-1">
+                        <span className="font-medium">Chave ativa no QR Code:</span>
+                        <span className="font-mono font-semibold text-slate-800 truncate max-w-[190px]">
+                          {activeKey.formattedKey}
+                        </span>
+                      </div>
+                    </div>
+
                     <div className="inline-block p-3 bg-white rounded-2xl shadow-sm border border-slate-200">
                       <QRCodeSVG
                         value={pixPayload}
@@ -470,7 +522,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                       <button
                         type="button"
                         onClick={handleCopyPix}
-                        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 transition-colors shadow-2xs"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 transition-colors shadow-2xs"
                       >
                         {copiedPix ? (
                           <>

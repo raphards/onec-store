@@ -7,11 +7,14 @@ import {
   Package, 
   Download, 
   PlusCircle, 
-  Plus 
+  Plus,
+  QrCode 
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { usePix } from '../context/PixContext';
 
 export const Layout: React.FC = () => {
+  const { activeKey, openContingencyModal } = usePix();
   const location = useLocation();
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isInstallable, setIsInstallable] = useState(false);
@@ -118,6 +121,22 @@ export const Layout: React.FC = () => {
 
           {/* Header Action Tools */}
           <div className="flex items-center gap-2">
+            {/* PIX Contingency Selector Button */}
+            <button
+              onClick={openContingencyModal}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100/90 hover:bg-slate-200/80 border border-slate-200/90 text-xs font-bold text-slate-700 shadow-2xs transition-all hover:border-slate-300 active:scale-95 group cursor-pointer"
+              title="Gerenciar Chaves PIX e Contingência"
+            >
+              <div
+                className="w-2.5 h-2.5 rounded-full shrink-0 shadow-xs"
+                style={{ backgroundColor: activeKey.bankColor }}
+              />
+              <span className="text-slate-500 font-medium">PIX:</span>
+              <span className="font-extrabold text-slate-900 group-hover:text-emerald-700 transition-colors">
+                {activeKey.name}
+              </span>
+            </button>
+
             {/* Install PWA Button */}
             {isInstallable && (
               <button
@@ -137,6 +156,26 @@ export const Layout: React.FC = () => {
           </div>
         </div>
       </header>
+
+      {/* Mobile Top Header Bar with PIX Contingency Button */}
+      <div className="md:hidden flex items-center justify-between px-4 py-2.5 bg-white/90 backdrop-blur-md border-b border-slate-200/80 sticky top-0 z-30 shadow-2xs">
+        <NavLink to="/" className="flex items-center gap-2">
+          <img src="/logo.png" alt="Logo" className="w-7 h-7 object-contain" />
+          <span className="font-extrabold text-sm text-slate-900 tracking-tight">OneC Store</span>
+        </NavLink>
+        <button
+          onClick={openContingencyModal}
+          className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 border border-slate-200 text-xs font-bold text-slate-800 active:scale-95 transition-transform cursor-pointer"
+          title="Chave PIX Ativa e Contingência"
+        >
+          <span
+            className="w-2 h-2 rounded-full shrink-0 animate-pulse"
+            style={{ backgroundColor: activeKey.bankColor }}
+          />
+          <span className="text-slate-500 font-medium">PIX:</span>
+          <span className="text-emerald-700 font-black">{activeKey.name}</span>
+        </button>
+      </div>
 
       {/* Main Page Content */}
       <main className="flex-1 max-w-6xl w-full mx-auto p-4 sm:p-6 pb-28 md:pb-12">

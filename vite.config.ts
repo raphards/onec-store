@@ -55,6 +55,10 @@ function apiDevPlugin(): Plugin {
             const { default: handler } = await import('./api/init-db.ts');
             return await handler(req, res);
           }
+          if (pathname === '/api/pix' || pathname.startsWith('/api/pix/')) {
+            const { default: handler } = await import('./api/pix.ts');
+            return await handler(req, res);
+          }
 
           res.statusCode = 404;
           res.setHeader('Content-Type', 'application/json');

@@ -11,7 +11,23 @@ export const sql = neon(connectionString);
  */
 export async function initDb() {
   try {
-    // 1. Create categories table
+    // 1. Create app_settings table for system preferences like active PIX key
+    await sql`
+      CREATE TABLE IF NOT EXISTS app_settings (
+        key VARCHAR(50) PRIMARY KEY,
+        value TEXT NOT NULL,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      );
+    `;
+
+    // Ensure default active pix key exists
+    await sql`
+      INSERT INTO app_settings (key, value)
+      VALUES ('active_pix_key_id', 'santander')
+      ON CONFLICT (key) DO NOTHING;
+    `;
+
+    // 2. Create categories table
     await sql`
       CREATE TABLE IF NOT EXISTS categories (
         id SERIAL PRIMARY KEY,

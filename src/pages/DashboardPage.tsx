@@ -13,9 +13,11 @@ import {
   RefreshCw 
 } from 'lucide-react';
 import { api } from '../services/api';
+import { usePix } from '../context/PixContext';
 import type { DashboardStats } from '../types';
 
 export const DashboardPage: React.FC = () => {
+  const { activeKey, openContingencyModal } = usePix();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -265,20 +267,35 @@ export const DashboardPage: React.FC = () => {
 
           {/* Cards Breakdown */}
           <div className="space-y-2.5">
-            {/* PIX Detail Card */}
-            <div className="p-3 rounded-2xl bg-emerald-50/70 border border-emerald-100 flex items-center justify-between">
+            {/* PIX Detail Card with Contingency status */}
+            <div className="p-3.5 rounded-2xl bg-emerald-50/70 border border-emerald-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center">
+                <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0">
                   <QrCode className="w-4 h-4" />
                 </div>
                 <div>
-                  <span className="text-xs font-bold text-emerald-950 block">PIX</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-bold text-emerald-950 block">PIX</span>
+                    <span className="text-[10px] font-extrabold px-1.5 py-0.2 rounded-full bg-emerald-200/70 text-emerald-800">
+                      {activeKey.name}
+                    </span>
+                  </div>
                   <span className="text-[11px] text-emerald-700">{pixStat.count} transações</span>
                 </div>
               </div>
-              <span className="font-extrabold text-sm text-emerald-950">
-                R$ {pixStat.total.toFixed(2).replace('.', ',')}
-              </span>
+
+              <div className="flex items-center justify-between sm:justify-end gap-3 pt-1 sm:pt-0 border-t sm:border-t-0 border-emerald-100/60">
+                <button
+                  type="button"
+                  onClick={openContingencyModal}
+                  className="text-[11px] font-bold text-emerald-800 hover:text-emerald-950 underline cursor-pointer"
+                >
+                  Alternar Chave
+                </button>
+                <span className="font-extrabold text-sm text-emerald-950">
+                  R$ {pixStat.total.toFixed(2).replace('.', ',')}
+                </span>
+              </div>
             </div>
 
             {/* Dinheiro Detail Card */}

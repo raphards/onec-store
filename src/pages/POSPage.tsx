@@ -15,6 +15,7 @@ import {
 import { api } from '../services/api';
 import { useCart } from '../context/CartContext';
 import { useToast } from '../context/ToastContext';
+import { usePix } from '../context/PixContext';
 import type { Product, Sale, DashboardStats } from '../types';
 import { CheckoutModal } from '../components/CheckoutModal';
 import { CartCheckoutModal } from '../components/CartCheckoutModal';
@@ -22,6 +23,7 @@ import { CartCheckoutModal } from '../components/CartCheckoutModal';
 export const POSPage: React.FC = () => {
   const { cartItems, totalItems, totalAmount, isCartOpen, setIsCartOpen } = useCart();
   const { showToast } = useToast();
+  const { activeKey, openContingencyModal } = usePix();
   const [products, setProducts] = useState<Product[]>([]);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [apiCategories, setApiCategories] = useState<string[]>([]);
@@ -165,24 +167,39 @@ export const POSPage: React.FC = () => {
       {/* 1. CONTROLES NO TOPO (NO LUGAR DA TOOLBAR NO MOBILE): BUSCA & PÍLULAS DE CATEGORIA */}
       <div className="space-y-3 pt-1 sm:pt-0">
         
-        {/* Search input with sleek light look */}
-        <div className="relative">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Buscar produto por nome ou categoria..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-10 py-3 rounded-2xl bg-white border border-slate-200/90 text-sm font-medium text-slate-800 placeholder-slate-400 shadow-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all"
-          />
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery('')}
-              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400 hover:text-slate-600 bg-slate-100 rounded-full w-5 h-5 flex items-center justify-center"
-            >
-              ✕
-            </button>
-          )}
+        {/* Search input with sleek light look + PIX Contingency shortcut */}
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Buscar produto por nome ou categoria..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-10 py-3 rounded-2xl bg-white border border-slate-200/90 text-sm font-medium text-slate-800 placeholder-slate-400 shadow-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400 hover:text-slate-600 bg-slate-100 rounded-full w-5 h-5 flex items-center justify-center"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+
+          <button
+            onClick={openContingencyModal}
+            className="flex items-center gap-2 px-3.5 py-3 rounded-2xl bg-white border border-slate-200/90 shadow-xs hover:border-slate-300 text-xs font-bold text-slate-700 transition-all shrink-0 cursor-pointer active:scale-95"
+            title="Alterar Chave PIX Ativa (Contingência)"
+          >
+            <div
+              className="w-2.5 h-2.5 rounded-full shrink-0 shadow-xs"
+              style={{ backgroundColor: activeKey.bankColor }}
+            />
+            <span className="text-slate-400 font-semibold hidden sm:inline">PIX:</span>
+            <span className="text-slate-900 font-black">{activeKey.name}</span>
+          </button>
         </div>
 
         {/* Category Pills (horizontally scrollable on mobile) */}

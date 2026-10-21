@@ -1,4 +1,6 @@
 import type { Product, Sale, DashboardStats, PaymentMethod } from '../types';
+import type { PixKeyId, PixKeyItem } from '../utils/pix';
+import { IMMUTABLE_PIX_KEYS } from '../utils/pix';
 
 const API_BASE = '/api';
 
@@ -231,5 +233,49 @@ export const api = {
       reader.onerror = () => reject(new Error('Erro ao ler arquivo'));
       reader.readAsDataURL(file);
     });
-  }
+  },
+
+  // PIX Contingency Settings
+  async getPixConfig(): Promise<{ activeKeyId: PixKeyId; activeKey: PixKeyItem; keys: PixKeyItem[] }> {
+    try {
+      const res = await fetch(`${API_BASE}/pix`);
+      if (!res.ok) throw new Error('Falha ao obter configuração PIX');
+      const data = await res.json();
+      localStorage.setItem('onec_active_pix_key_id', data.activeKeyId);
+      return data;
+    } catch (err) {
+      console.warn('API getPixConfig fallback:', err);
+      const saved = (localStorage.getItem('onec_active_pix_key_id') as PixKeyId) || 'santander';
+      const keys = IMMUTABLE_PIX_KEYS.map((k) => ({
+        ...k,
+        isActive: k.id === saved,
+      }));
+      const activeKey = keys.find((k) => k.id === saved) || keys[0];
+      return { activeKeyId: saved, activeKey, keys };
+    }
+  },
+
+  async setActivePixKey(activeKeyId: PixKeyId): Promise<{ activeKeyId: PixKeyId; activeKey: PixKeyItem; keys: PixKeyItem[] }> {
+    localStorage.setItem('onec_active_pix_key_id', activeKeyId);
+    try {
+      const res = await fetch(`${API_BASE}/pix`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ activeKeyId }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Erro ao alterar chave PIX no servidor');
+      }
+      return await res.json();
+    } catch (err) {
+      console.warn('API setActivePixKey fallback to local state:', err);
+      const keys = IMMUTABLE_PIX_KEYS.map((k) => ({
+        ...k,
+        isActive: k.id === activeKeyId,
+      }));
+      const activeKey = keys.find((k) => k.id === activeKeyId) || keys[0];
+      return { activeKeyId, activeKey, keys };
+    }
+  },
 };
