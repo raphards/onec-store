@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate, NavLink } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Package, 
@@ -9,19 +10,25 @@ import {
   X, 
   Check, 
   Loader2, 
-  Image as ImageIcon, 
   Eye, 
   EyeOff, 
-  DollarSign 
+  ShoppingBag, 
+  CheckCircle2, 
+  Sparkles, 
+  ExternalLink 
 } from 'lucide-react';
 import { api } from '../services/api';
 import type { Product } from '../types';
 
 export const ProductsAdminPage: React.FC = () => {
+  const navigate = useNavigate();
+
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [previewProduct, setPreviewProduct] = useState<Product | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Form state
   const [name, setName] = useState('');
@@ -32,6 +39,13 @@ export const ProductsAdminPage: React.FC = () => {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => {
+      setToastMessage((cur) => (cur === msg ? null : cur));
+    }, 4000);
+  };
 
   const fetchProducts = async () => {
     setLoading(true);
@@ -71,6 +85,7 @@ export const ProductsAdminPage: React.FC = () => {
     setImageFile(null);
     setImagePreview(prod.image_url);
     setIsModalOpen(true);
+    setPreviewProduct(null);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -92,7 +107,6 @@ export const ProductsAdminPage: React.FC = () => {
     try {
       let finalImageUrl = imageUrl;
 
-      // If user uploaded a new image file, upload to Neon Object Storage
       if (imageFile) {
         finalImageUrl = await api.uploadImage(imageFile);
       }
@@ -104,7 +118,6 @@ export const ProductsAdminPage: React.FC = () => {
       const numPrice = parseFloat(price.replace(',', '.')) || 0;
 
       if (editingProduct) {
-        // Update product
         await api.updateProduct({
           id: editingProduct.id,
           name,
@@ -113,8 +126,8 @@ export const ProductsAdminPage: React.FC = () => {
           description,
           image_url: finalImageUrl,
         });
+        showToast(`Produto "${name}" atualizado com sucesso!`);
       } else {
-        // Create product
         await api.createProduct({
           name,
           price: numPrice,
@@ -122,6 +135,7 @@ export const ProductsAdminPage: React.FC = () => {
           description,
           image_url: finalImageUrl,
         });
+        showToast(`Produto "${name}" cadastrado com sucesso!`);
       }
 
       setIsModalOpen(false);
@@ -133,22 +147,41 @@ export const ProductsAdminPage: React.FC = () => {
     }
   };
 
-  const handleToggleActive = async (prod: Product) => {
+  // Toggle active/inactive with optimistic UI update and toast
+  const handleToggleActive = async (prod: Product, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+
+    const newActiveState = !prod.is_active;
+
+    // Optimistic update
+    setProducts((prev) =>
+      prev.map((p) => (p.id === prod.id ? { ...p, is_active: newActiveState } : p))
+    );
+
+    showToast(
+      newActiveState
+        ? `"${prod.name}" agora está ATIVO no PDV!`
+        : `"${prod.name}" foi OCULTADO do PDV!`
+    );
+
     try {
       await api.updateProduct({
         id: prod.id,
-        is_active: !prod.is_active,
+        is_active: newActiveState,
       });
-      fetchProducts();
     } catch (err) {
       console.error(err);
+      // Revert if error
+      fetchProducts();
     }
   };
 
-  const handleDeleteProduct = async (id: number) => {
+  const handleDeleteProduct = async (id: number, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
     if (!confirm('Deseja realmente excluir este produto?')) return;
     try {
       await api.deleteProduct(id);
+      showToast('Produto excluído com sucesso.');
       fetchProducts();
     } catch (err) {
       console.error(err);
@@ -158,27 +191,55 @@ export const ProductsAdminPage: React.FC = () => {
   return (
     <div className="space-y-6">
 
+      {/* Toast Alert */}
+      <AnimatePresence>
+        {toastMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: -20, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.9 }}
+            className="fixed top-18 right-4 z-50 max-w-sm bg-slate-900 text-white p-3.5 rounded-2xl shadow-xl flex items-center gap-3 border border-slate-700"
+          >
+            <div className="w-8 h-8 rounded-xl bg-emerald-500 text-white flex items-center justify-center shrink-0">
+              <Check className="w-4 h-4 stroke-[3]" />
+            </div>
+            <p className="text-xs font-bold">{toastMessage}</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Header and Add Button */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
             Catálogo de Produtos
           </h2>
           <p className="text-xs text-slate-500 font-medium">
-            Gerencie os itens da maquininha e upload no Neon Storage
+            Gerencie visibilidade, preços e fotos no Neon Object Storage (bucket img-products)
           </p>
         </div>
 
-        <button
-          onClick={openNewModal}
-          className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold shadow-md shadow-slate-900/15 transition-transform active:scale-95"
-        >
-          <Plus className="w-4 h-4 stroke-[3]" />
-          <span>Novo Produto</span>
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Dedicated Page button */}
+          <NavLink
+            to="/cadastrar-produto"
+            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold shadow-md shadow-emerald-600/20 transition-transform active:scale-95"
+          >
+            <Plus className="w-4 h-4 stroke-[3]" />
+            <span>Cadastrar Produto</span>
+          </NavLink>
+
+          <button
+            onClick={openNewModal}
+            className="px-3.5 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 text-xs font-bold transition-colors shadow-2xs"
+            title="Adicionar via Modal"
+          >
+            Novo Rápido
+          </button>
+        </div>
       </div>
 
-      {/* Products Grid / Cards */}
+      {/* Products Grid */}
       {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
           {[1, 2, 3].map((i) => (
@@ -189,69 +250,214 @@ export const ProductsAdminPage: React.FC = () => {
         <div className="text-center py-16 bg-white/70 backdrop-blur-xs rounded-3xl border border-slate-200">
           <Package className="w-12 h-12 text-slate-300 mx-auto mb-2" />
           <h4 className="font-bold text-slate-800">Nenhum produto cadastrado</h4>
-          <p className="text-xs text-slate-500 mt-0.5">Clique em "Novo Produto" para adicionar o primeiro item.</p>
+          <p className="text-xs text-slate-500 mt-0.5">Clique em "Cadastrar Produto" para começar.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5">
-          {products.map((prod) => (
-            <div
-              key={prod.id}
-              className={`bg-white rounded-2xl p-4 border transition-all shadow-xs flex items-center justify-between gap-3 ${
-                prod.is_active ? 'border-slate-200 hover:border-slate-300' : 'border-slate-200 opacity-60 bg-slate-50'
-              }`}
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <img
-                  src={prod.image_url}
-                  alt={prod.name}
-                  className="w-14 h-14 rounded-xl object-cover border border-slate-200 bg-slate-100 shrink-0"
-                />
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-bold text-sm text-slate-900 truncate">
-                      {prod.name}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+          {products.map((prod) => {
+            const price = Number(prod.price);
+            const isActive = prod.is_active !== false;
+
+            return (
+              <div
+                key={prod.id}
+                className={`bg-white rounded-2xl p-4 border transition-all shadow-xs flex flex-col justify-between gap-3 ${
+                  isActive
+                    ? 'border-slate-200 hover:border-slate-300 hover:shadow-sm'
+                    : 'border-slate-200 bg-slate-50/80 opacity-75'
+                }`}
+              >
+                {/* Top: Image, info and View Modal click */}
+                <div 
+                  className="flex items-start gap-3 cursor-pointer group"
+                  onClick={() => setPreviewProduct(prod)}
+                >
+                  <div className="relative w-16 h-16 rounded-xl overflow-hidden bg-slate-100 border border-slate-200 shrink-0">
+                    <img
+                      src={prod.image_url}
+                      alt={prod.name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                    />
+                    {!isActive && (
+                      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-2xs flex items-center justify-center text-white">
+                        <EyeOff className="w-4 h-4" />
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="font-extrabold text-sm text-slate-900 truncate group-hover:text-emerald-700 transition-colors">
+                        {prod.name}
+                      </span>
+                    </div>
+
+                    <span className="text-[11px] font-semibold text-slate-400 block mt-0.5">
+                      {prod.category || 'Geral'}
+                    </span>
+
+                    <span className="text-base font-extrabold text-emerald-600 block mt-1">
+                      R$ {price.toFixed(2).replace('.', ',')}
                     </span>
                   </div>
-                  <span className="text-[11px] font-semibold text-slate-400 block">
-                    {prod.category}
+                </div>
+
+                {/* Bottom Bar: Action Buttons & Visibility Switch */}
+                <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between gap-2">
+                  
+                  {/* Status Toggle Switch with Label */}
+                  <button
+                    type="button"
+                    onClick={(e) => handleToggleActive(prod, e)}
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold transition-all ${
+                      isActive
+                        ? 'bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100'
+                        : 'bg-slate-100 text-slate-500 border border-slate-200 hover:bg-slate-200'
+                    }`}
+                    title="Alternar visibilidade no PDV"
+                  >
+                    <span className={`w-2 h-2 rounded-full ${isActive ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
+                    <span>{isActive ? 'Ativo no PDV' : 'Oculto'}</span>
+                  </button>
+
+                  {/* Actions: View (Eye), Edit, Delete */}
+                  <div className="flex items-center gap-1">
+                    
+                    {/* Visualizar / Olhinho */}
+                    <button
+                      type="button"
+                      title="Visualizar Detalhes"
+                      onClick={() => setPreviewProduct(prod)}
+                      className="w-8 h-8 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 flex items-center justify-center transition-colors shadow-2xs"
+                    >
+                      <Eye className="w-4 h-4 stroke-[2.5]" />
+                    </button>
+
+                    {/* Editar */}
+                    <button
+                      type="button"
+                      title="Editar"
+                      onClick={() => openEditModal(prod)}
+                      className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-colors"
+                    >
+                      <Edit3 className="w-4 h-4" />
+                    </button>
+
+                    {/* Excluir */}
+                    <button
+                      type="button"
+                      title="Excluir"
+                      onClick={(e) => handleDeleteProduct(prod.id, e)}
+                      className="w-8 h-8 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 flex items-center justify-center transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* MODAL DE VISUALIZAÇÃO DO PRODUTO (AO CLICAR NO OLHINHO)   */}
+      {/* ======================================================== */}
+      <AnimatePresence>
+        {previewProduct && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-3xl max-w-sm w-full p-5 shadow-2xl border border-slate-200 relative overflow-hidden space-y-4"
+            >
+              <button
+                onClick={() => setPreviewProduct(null)}
+                className="absolute top-3.5 right-3.5 w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 transition-colors z-10"
+              >
+                <X className="w-4 h-4" />
+              </button>
+
+              {/* Large Image */}
+              <div className="w-full aspect-square rounded-2xl overflow-hidden bg-slate-100 border border-slate-200 relative shadow-sm">
+                <img
+                  src={previewProduct.image_url}
+                  alt={previewProduct.name}
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-white/90 backdrop-blur-md text-xs font-bold text-slate-700 shadow-xs">
+                  {previewProduct.category || 'Geral'}
+                </div>
+              </div>
+
+              {/* Product Info */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-400">Produto #{previewProduct.id}</span>
+                  <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
+                    previewProduct.is_active !== false
+                      ? 'bg-emerald-100 text-emerald-800'
+                      : 'bg-slate-100 text-slate-500'
+                  }`}>
+                    {previewProduct.is_active !== false ? '● Visível no PDV' : '○ Oculto'}
                   </span>
-                  <span className="text-sm font-extrabold text-emerald-600 block mt-0.5">
-                    R$ {Number(prod.price).toFixed(2).replace('.', ',')}
+                </div>
+
+                <h3 className="text-lg font-extrabold text-slate-900 leading-tight">
+                  {previewProduct.name}
+                </h3>
+
+                {previewProduct.description && (
+                  <p className="text-xs text-slate-600 pt-0.5 leading-relaxed">
+                    {previewProduct.description}
+                  </p>
+                )}
+
+                <div className="pt-2 flex items-baseline justify-between border-t border-slate-100">
+                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    Valor de Venda:
+                  </span>
+                  <span className="text-2xl font-extrabold text-emerald-600">
+                    R$ {Number(previewProduct.price).toFixed(2).replace('.', ',')}
                   </span>
                 </div>
               </div>
 
               {/* Actions */}
-              <div className="flex items-center gap-1 shrink-0">
+              <div className="pt-2 flex flex-col gap-2">
                 <button
                   type="button"
-                  title={prod.is_active ? 'Ocultar do PDV' : 'Ativar no PDV'}
-                  onClick={() => handleToggleActive(prod)}
-                  className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-colors"
+                  onClick={() => navigate('/')}
+                  className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-md shadow-emerald-600/20 flex items-center justify-center gap-2 transition-transform active:scale-98"
                 >
-                  {prod.is_active ? <Eye className="w-4 h-4 text-emerald-600" /> : <EyeOff className="w-4 h-4 text-slate-400" />}
+                  <ShoppingBag className="w-4 h-4" />
+                  <span>Vender Este Produto no PDV</span>
                 </button>
-                <button
-                  type="button"
-                  title="Editar"
-                  onClick={() => openEditModal(prod)}
-                  className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-colors"
-                >
-                  <Edit3 className="w-4 h-4" />
-                </button>
-                <button
-                  type="button"
-                  title="Excluir"
-                  onClick={() => handleDeleteProduct(prod.id)}
-                  className="w-8 h-8 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 flex items-center justify-center transition-colors"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => openEditModal(previewProduct)}
+                    className="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs flex items-center justify-center gap-1.5"
+                  >
+                    <Edit3 className="w-3.5 h-3.5" />
+                    <span>Editar Dados</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPreviewProduct(null)}
+                    className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs"
+                  >
+                    Fechar
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
-      )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Product Creation / Edit Modal */}
       <AnimatePresence>

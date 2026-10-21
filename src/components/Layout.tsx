@@ -6,9 +6,8 @@ import {
   BarChart3, 
   Package, 
   Download, 
-  CheckCircle2, 
-  Wifi, 
-  Sparkles 
+  PlusCircle, 
+  Plus 
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -52,6 +51,7 @@ export const Layout: React.FC = () => {
 
   const navItems = [
     { to: '/', label: 'PDV', icon: ShoppingBag, color: 'text-emerald-600' },
+    { to: '/cadastrar-produto', label: 'Cadastrar', icon: PlusCircle, color: 'text-emerald-600' },
     { to: '/vendas', label: 'Vendas', icon: Receipt, color: 'text-blue-600' },
     { to: '/dashboard', label: 'Dashboard', icon: BarChart3, color: 'text-violet-600' },
     { to: '/produtos', label: 'Produtos', icon: Package, color: 'text-amber-600' },
@@ -103,7 +103,7 @@ export const Layout: React.FC = () => {
                 <NavLink
                   key={item.to}
                   to={item.to}
-                  className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
                     isActive
                       ? 'bg-white text-slate-900 shadow-xs shadow-slate-950/5'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
@@ -153,9 +153,9 @@ export const Layout: React.FC = () => {
         </AnimatePresence>
       </main>
 
-      {/* Mobile Bottom Navigation Bar (Super ergonomic for mobile maquininha feel!) */}
+      {/* Mobile Bottom Navigation Bar */}
       <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-lg border-t border-slate-200/90 shadow-lg px-2 py-2 safe-area-pb">
-        <div className="grid grid-cols-4 gap-1 max-w-md mx-auto">
+        <div className="grid grid-cols-5 gap-1 max-w-md mx-auto">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.to;
@@ -163,7 +163,7 @@ export const Layout: React.FC = () => {
               <NavLink
                 key={item.to}
                 to={item.to}
-                className={`relative flex flex-col items-center justify-center py-2 px-1 rounded-xl transition-all ${
+                className={`relative flex flex-col items-center justify-center py-1.5 px-0.5 rounded-xl transition-all ${
                   isActive
                     ? 'text-slate-900 font-bold'
                     : 'text-slate-400 font-medium hover:text-slate-600'
@@ -176,8 +176,8 @@ export const Layout: React.FC = () => {
                     transition={{ type: 'spring', stiffness: 380, damping: 30 }}
                   />
                 )}
-                <Icon className={`w-5 h-5 mb-1 ${isActive ? item.color : 'text-slate-400'}`} />
-                <span className="text-[11px] leading-none">{item.label}</span>
+                <Icon className={`w-4.5 h-4.5 mb-1 ${isActive ? item.color : 'text-slate-400'}`} />
+                <span className="text-[10px] leading-none tracking-tight">{item.label}</span>
               </NavLink>
             );
           })}

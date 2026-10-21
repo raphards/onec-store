@@ -3,19 +3,21 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Search, 
   Sparkles, 
-  Tag, 
-  RefreshCw, 
+  Flame, 
   ShoppingBag, 
   Plus, 
   CheckCircle2, 
-  TrendingUp 
+  TrendingUp, 
+  Award, 
+  Zap 
 } from 'lucide-react';
 import { api } from '../services/api';
-import type { Product, Sale } from '../types';
+import type { Product, Sale, DashboardStats } from '../types';
 import { CheckoutModal } from '../components/CheckoutModal';
 
 export const POSPage: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('Todos');
@@ -23,11 +25,15 @@ export const POSPage: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [lastSaleAlert, setLastSaleAlert] = useState<Sale | null>(null);
 
-  const fetchProducts = async () => {
+  const fetchData = async () => {
     setLoading(true);
     try {
-      const data = await api.getProducts();
-      setProducts(data);
+      const [prodsData, statsData] = await Promise.all([
+        api.getProducts(),
+        api.getStats().catch(() => null),
+      ]);
+      setProducts(prodsData);
+      setStats(statsData);
     } catch (err) {
       console.error(err);
     } finally {
@@ -36,18 +42,63 @@ export const POSPage: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchProducts();
+    fetchData();
   }, []);
+
+  // Compute the TOP 2 best-selling products
+  const activeProducts = products.filter((p) => p.is_active !== false);
+
+  const getTop2Products = (): { product: Product; quantitySold?: number; rank: number }[] => {
+    if (activeProducts.length === 0) return [];
+
+    const topList: { product: Product; quantitySold?: number; rank: number }[] = [];
+    const usedIds = new Set<number>();
+
+    // 1. Try matching from stats.topProducts
+    if (stats?.topProducts && stats.topProducts.length > 0) {
+      for (const top of stats.topProducts) {
+        const found = activeProducts.find(
+          (p) => p.name.toLowerCase() === top.name.toLowerCase() && !usedIds.has(p.id)
+        );
+        if (found) {
+          usedIds.add(found.id);
+          topList.push({
+            product: found,
+            quantitySold: top.quantity,
+            rank: topList.length + 1,
+          });
+        }
+        if (topList.length === 2) break;
+      }
+    }
+
+    // 2. Fallback: If less than 2, fill from activeProducts
+    for (const p of activeProducts) {
+      if (!usedIds.has(p.id)) {
+        usedIds.add(p.id);
+        topList.push({
+          product: p,
+          rank: topList.length + 1,
+        });
+      }
+      if (topList.length === 2) break;
+    }
+
+    return topList;
+  };
+
+  const top2Products = getTop2Products();
 
   // Unique categories list
   const categories = ['Todos', ...Array.from(new Set(products.map((p) => p.category || 'Geral')))];
 
-  // Filtered products
-  const filteredProducts = products.filter((p) => {
+  // Filtered products for main grid
+  const filteredProducts = activeProducts.filter((p) => {
     const matchesCategory = selectedCategory === 'Todos' || p.category === selectedCategory;
-    const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    const matchesSearch =
+      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (p.description && p.description.toLowerCase().includes(searchQuery.toLowerCase()));
-    return matchesCategory && matchesSearch && p.is_active !== false;
+    return matchesCategory && matchesSearch;
   });
 
   const handleCardClick = (product: Product) => {
@@ -57,6 +108,8 @@ export const POSPage: React.FC = () => {
 
   const handleSaleSuccess = (sale: Sale) => {
     setLastSaleAlert(sale);
+    // Refresh stats to immediately update top sellers
+    api.getStats().then(setStats).catch(() => {});
     setTimeout(() => {
       setLastSaleAlert((current) => (current?.id === sale.id ? null : current));
     }, 6000);
@@ -75,7 +128,6 @@ export const POSPage: React.FC = () => {
 
   const cardVariants = {
     hidden: (index: number) => {
-      // Motion from different directions depending on index!
       const directions = [
         { y: 30, x: 0 },
         { y: -30, x: 0 },
@@ -95,7 +147,7 @@ export const POSPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
 
       {/* Sale Toast Notification */}
       <AnimatePresence>
@@ -118,6 +170,114 @@ export const POSPage: React.FC = () => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* ========================================================= */}
+      {/* 1. SEPARAÇÃO SUPERIOR: OS 2 PRODUTOS MAIS VENDIDOS */}
+      {/* ========================================================= */}
+      {!loading && top2Products.length > 0 && !searchQuery && (
+        <motion.section
+          initial={{ opacity: 0, y: -15 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-gradient-to-br from-amber-50/70 via-orange-50/40 to-emerald-50/50 p-4 sm:p-5 rounded-3xl border border-amber-200/80 shadow-xs space-y-3"
+        >
+          {/* Section Header */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-amber-500 to-orange-500 text-white flex items-center justify-center shadow-xs">
+                <Flame className="w-5 h-5 fill-white" />
+              </div>
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <h3 className="font-extrabold text-sm sm:text-base text-slate-900 tracking-tight">
+                    Mais Vendidos • Atalhos Rápidos
+                  </h3>
+                  <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-full bg-amber-500 text-white uppercase tracking-wider">
+                    Top 2
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500 font-medium">
+                  Toque para vender os produtos campeões de vendas
+                </p>
+              </div>
+            </div>
+
+            <span className="hidden sm:inline-flex items-center gap-1 text-xs font-bold text-amber-700 bg-amber-100/80 px-2.5 py-1 rounded-full">
+              <Zap className="w-3.5 h-3.5" /> 1-Toque
+            </span>
+          </div>
+
+          {/* 2 Top Product Cards */}
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
+            {top2Products.map(({ product, quantitySold, rank }, idx) => {
+              const isFirst = rank === 1;
+              const price = Number(product.price);
+
+              return (
+                <motion.div
+                  key={product.id}
+                  whileHover={{ y: -3, scale: 1.01 }}
+                  whileTap={{ scale: 0.96 }}
+                  onClick={() => handleCardClick(product)}
+                  className={`relative bg-white rounded-2xl p-3 sm:p-4 border-2 cursor-pointer shadow-sm hover:shadow-md transition-all flex flex-col justify-between ${
+                    isFirst
+                      ? 'border-amber-400 bg-linear-to-b from-amber-50/30 to-white'
+                      : 'border-slate-300 bg-linear-to-b from-slate-50/40 to-white'
+                  }`}
+                >
+                  {/* Top Rank Badge */}
+                  <div className="flex items-center justify-between mb-2">
+                    <span
+                      className={`inline-flex items-center gap-1 text-[10px] sm:text-xs font-extrabold px-2 py-0.5 rounded-full shadow-2xs ${
+                        isFirst
+                          ? 'bg-amber-400 text-amber-950 border border-amber-300'
+                          : 'bg-slate-200 text-slate-800 border border-slate-300'
+                      }`}
+                    >
+                      <Award className="w-3 h-3" />
+                      {isFirst ? '1º Mais Vendido' : '2º Mais Vendido'}
+                    </span>
+
+                    {quantitySold !== undefined && quantitySold > 0 && (
+                      <span className="text-[10px] font-bold text-slate-400 hidden sm:inline">
+                        {quantitySold} un. vendidas
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Thumbnail and Title */}
+                  <div className="flex items-center gap-2.5 sm:gap-3.5 my-1">
+                    <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl overflow-hidden bg-slate-100 border border-slate-200 shrink-0 shadow-xs">
+                      <img
+                        src={product.image_url}
+                        alt={product.name}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h4 className="font-extrabold text-xs sm:text-sm text-slate-900 line-clamp-2 leading-tight">
+                        {product.name}
+                      </h4>
+                      <span className="text-[10px] font-medium text-slate-400 block mt-0.5">
+                        {product.category}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Price & Quick Tap */}
+                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between mt-1">
+                    <span className="text-base sm:text-lg font-extrabold text-emerald-600">
+                      R$ {price.toFixed(2).replace('.', ',')}
+                    </span>
+                    <span className="text-[10px] font-extrabold px-2 py-1 rounded-lg bg-emerald-600 text-white flex items-center gap-1 shadow-xs">
+                      <Plus className="w-3 h-3 stroke-[3]" /> Vender
+                    </span>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
+        </motion.section>
+      )}
 
       {/* Header Controls: Search & Category Pills */}
       <div className="space-y-3">
@@ -160,7 +320,7 @@ export const POSPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Products Grid: Square Cards */}
+      {/* Main Products Grid: Square Cards */}
       {loading ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4 pt-2">
           {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
@@ -220,8 +380,8 @@ export const POSPage: React.FC = () => {
                     loading="lazy"
                     className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-108"
                     onError={(e) => {
-                      // Fallback placeholder image
-                      (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1548839140-29a749e1bc4e?auto=format&fit=crop&w=600&q=80';
+                      (e.target as HTMLImageElement).src =
+                        'https://images.unsplash.com/photo-1548839140-29a749e1bc4e?auto=format&fit=crop&w=600&q=80';
                     }}
                   />
                 </div>
@@ -231,10 +391,12 @@ export const POSPage: React.FC = () => {
                   <h4 className="font-bold text-slate-900 text-xs sm:text-sm line-clamp-2 leading-tight group-hover:text-emerald-800 transition-colors">
                     {product.name}
                   </h4>
-                  
+
                   <div className="pt-1 flex items-baseline justify-between">
                     <div>
-                      <span className="text-[10px] text-slate-400 font-semibold block leading-none">Preço</span>
+                      <span className="text-[10px] text-slate-400 font-semibold block leading-none">
+                        Preço
+                      </span>
                       <span className="text-base sm:text-lg font-extrabold text-emerald-600 tracking-tight">
                         R$ {price.toFixed(2).replace('.', ',')}
                       </span>

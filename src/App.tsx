@@ -5,6 +5,7 @@ import { POSPage } from './pages/POSPage';
 import { SalesHistoryPage } from './pages/SalesHistoryPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { ProductsAdminPage } from './pages/ProductsAdminPage';
+import { CreateProductPage } from './pages/CreateProductPage';
 
 export function App() {
   return (
@@ -15,6 +16,7 @@ export function App() {
           <Route path="vendas" element={<SalesHistoryPage />} />
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="produtos" element={<ProductsAdminPage />} />
+          <Route path="cadastrar-produto" element={<CreateProductPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>
