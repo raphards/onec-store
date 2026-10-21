@@ -9,13 +9,17 @@ import {
   CheckCircle2, 
   TrendingUp, 
   Award, 
-  Zap 
+  Zap, 
+  ArrowRight 
 } from 'lucide-react';
 import { api } from '../services/api';
+import { useCart } from '../context/CartContext';
 import type { Product, Sale, DashboardStats } from '../types';
 import { CheckoutModal } from '../components/CheckoutModal';
+import { CartCheckoutModal } from '../components/CartCheckoutModal';
 
 export const POSPage: React.FC = () => {
+  const { cartItems, totalItems, totalAmount, isCartOpen, setIsCartOpen } = useCart();
   const [products, setProducts] = useState<Product[]>([]);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [apiCategories, setApiCategories] = useState<string[]>([]);
@@ -25,6 +29,7 @@ export const POSPage: React.FC = () => {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [lastSaleAlert, setLastSaleAlert] = useState<Sale | null>(null);
+  const [cartToast, setCartToast] = useState<{ message: string } | null>(null);
 
   const fetchData = async () => {
     setLoading(true);
@@ -123,6 +128,15 @@ export const POSPage: React.FC = () => {
     }, 6000);
   };
 
+  const handleAddToCartToast = (product: Product, quantity: number) => {
+    setCartToast({
+      message: `${quantity}x ${product.name} adicionado ao carrinho!`,
+    });
+    setTimeout(() => {
+      setCartToast(null);
+    }, 3500);
+  };
+
   // Motion variants for dynamic entry from different directions
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -156,6 +170,23 @@ export const POSPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
+
+      {/* Cart Toast Notification */}
+      <AnimatePresence>
+        {cartToast && (
+          <motion.div
+            initial={{ opacity: 0, y: -20, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.9 }}
+            className="fixed top-18 right-4 z-50 max-w-sm bg-slate-900 text-white p-3.5 rounded-2xl shadow-xl flex items-center gap-3 border border-slate-700"
+          >
+            <div className="w-8 h-8 rounded-xl bg-emerald-500 text-white flex items-center justify-center shrink-0">
+              <ShoppingBag className="w-4 h-4" />
+            </div>
+            <p className="text-xs font-bold">{cartToast.message}</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Sale Toast Notification */}
       <AnimatePresence>
@@ -421,7 +452,7 @@ export const POSPage: React.FC = () => {
         </motion.div>
       )}
 
-      {/* Maquininha Checkout Modal */}
+      {/* Maquininha Single Item Checkout Modal */}
       <CheckoutModal
         product={selectedProduct}
         isOpen={isModalOpen}
@@ -429,6 +460,59 @@ export const POSPage: React.FC = () => {
           setIsModalOpen(false);
           setSelectedProduct(null);
         }}
+        onSuccessSale={handleSaleSuccess}
+        onAddToCartToast={handleAddToCartToast}
+      />
+
+      {/* Floating Finalizar Venda Button (when cart has items) */}
+      <AnimatePresence>
+        {cartItems.length > 0 && (
+          <motion.div
+            initial={{ y: 90, opacity: 0, scale: 0.95 }}
+            animate={{ y: 0, opacity: 1, scale: 1 }}
+            exit={{ y: 90, opacity: 0, scale: 0.95 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+            className="fixed bottom-20 md:bottom-6 inset-x-4 max-w-md mx-auto z-40"
+          >
+            <button
+              type="button"
+              onClick={() => setIsCartOpen(true)}
+              className="w-full p-4 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-700 hover:to-teal-800 text-white font-extrabold shadow-xl shadow-emerald-700/35 flex items-center justify-between border border-emerald-400/40 transition-transform active:scale-98"
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="relative w-9 h-9 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center">
+                  <ShoppingBag className="w-5 h-5 text-white" />
+                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-amber-400 text-slate-950 text-[11px] font-extrabold rounded-full flex items-center justify-center shadow-xs">
+                    {totalItems}
+                  </span>
+                </div>
+                <div className="text-left">
+                  <span className="text-base font-extrabold block leading-tight">
+                    Finalizar Venda
+                  </span>
+                  <span className="text-[11px] text-emerald-100 font-medium">
+                    {cartItems.length} {cartItems.length === 1 ? 'produto no carrinho' : 'produtos no carrinho'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-lg font-extrabold tracking-tight">
+                  R$ {totalAmount.toFixed(2).replace('.', ',')}
+                </span>
+                <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center">
+                  <ArrowRight className="w-4 h-4 text-white" />
+                </div>
+              </div>
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Cart Multi-Item Checkout Modal */}
+      <CartCheckoutModal
+        isOpen={isCartOpen}
+        onClose={() => setIsCartOpen(false)}
         onSuccessSale={handleSaleSuccess}
       />
 

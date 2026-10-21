@@ -6,20 +6,23 @@ import { SalesHistoryPage } from './pages/SalesHistoryPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { ProductsAdminPage } from './pages/ProductsAdminPage';
 import { CreateProductPage } from './pages/CreateProductPage';
+import { CartProvider } from './context/CartContext';
 
 export function App() {
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Layout />}>
-          <Route index element={<POSPage />} />
-          <Route path="vendas" element={<SalesHistoryPage />} />
-          <Route path="dashboard" element={<DashboardPage />} />
-          <Route path="produtos" element={<ProductsAdminPage />} />
-          <Route path="cadastrar-produto" element={<CreateProductPage />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Route>
-      </Routes>
+      <CartProvider>
+        <Routes>
+          <Route path="/" element={<Layout />}>
+            <Route index element={<POSPage />} />
+            <Route path="vendas" element={<SalesHistoryPage />} />
+            <Route path="dashboard" element={<DashboardPage />} />
+            <Route path="produtos" element={<ProductsAdminPage />} />
+            <Route path="cadastrar-produto" element={<CreateProductPage />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Route>
+        </Routes>
+      </CartProvider>
     </BrowserRouter>
   );
 }

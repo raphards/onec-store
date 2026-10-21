@@ -1,5 +1,10 @@
 export type PaymentMethod = 'PIX' | 'DINHEIRO';
 
+export interface CartItem {
+  product: Product;
+  quantity: number;
+}
+
 export interface Product {
   id: number;
   name: string;

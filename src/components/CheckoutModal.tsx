@@ -11,10 +11,12 @@ import {
   ArrowRight, 
   Loader2, 
   Sparkles, 
+  ShoppingBag, 
   ReceiptText 
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import confetti from 'canvas-confetti';
+import { useCart } from '../context/CartContext';
 import type { Product, PaymentMethod, Sale } from '../types';
 
 interface CheckoutModalProps {
@@ -22,6 +24,7 @@ interface CheckoutModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccessSale: (sale: Sale) => void;
+  onAddToCartToast?: (product: Product, quantity: number) => void;
 }
 
 export const CheckoutModal: React.FC<CheckoutModalProps> = ({
@@ -29,7 +32,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   isOpen,
   onClose,
   onSuccessSale,
+  onAddToCartToast,
 }) => {
+  const { addToCart } = useCart();
   const [quantity, setQuantity] = useState(1);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('PIX');
   const [amountReceived, setAmountReceived] = useState<string>('');
@@ -67,6 +72,14 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
   const handleQuickCash = (amount: number) => {
     setAmountReceived(amount.toString());
+  };
+
+  const handleAddToCart = () => {
+    addToCart(product, quantity);
+    onClose();
+    if (onAddToCartToast) {
+      onAddToCartToast(product, quantity);
+    }
   };
 
   const handleFinalize = async () => {
@@ -519,6 +532,16 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                     R$ {subtotal.toFixed(2).replace('.', ',')}
                   </span>
                 </div>
+
+                {/* BOTÃO ADICIONAR AO CARRINHO (EM CIMA DO FINALIZAR VENDA) */}
+                <button
+                  type="button"
+                  onClick={handleAddToCart}
+                  className="w-full py-3.5 px-4 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-extrabold text-sm border border-slate-300/80 flex items-center justify-center gap-2 transition-all active:scale-98 shadow-2xs"
+                >
+                  <ShoppingBag className="w-4 h-4 text-emerald-600" />
+                  <span>Adicionar ao Carrinho ({quantity}x)</span>
+                </button>
 
                 <button
                   type="button"
