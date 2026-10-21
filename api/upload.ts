@@ -1,3 +1,4 @@
+import { Buffer } from 'node:buffer';
 import { uploadToNeonStorage } from '../src/server/s3.js';
 
 export const config = {
