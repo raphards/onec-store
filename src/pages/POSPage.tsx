@@ -210,12 +210,51 @@ export const POSPage: React.FC = () => {
         )}
       </AnimatePresence>
 
-      {/* ========================================================= */}
-      {/* 1. SEPARAÇÃO SUPERIOR: OS 2 PRODUTOS MAIS VENDIDOS */}
-      {/* ========================================================= */}
+      {/* 1. CONTROLES NO TOPO (NO LUGAR DA TOOLBAR NO MOBILE): BUSCA & PÍLULAS DE CATEGORIA */}
+      <div className="space-y-3 pt-1 sm:pt-0">
+        
+        {/* Search input with sleek light look */}
+        <div className="relative">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <input
+            type="text"
+            placeholder="Buscar produto por nome ou categoria..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-10 py-3 rounded-2xl bg-white border border-slate-200/90 text-sm font-medium text-slate-800 placeholder-slate-400 shadow-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400 hover:text-slate-600 bg-slate-100 rounded-full w-5 h-5 flex items-center justify-center"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+
+        {/* Category Pills (horizontally scrollable on mobile) */}
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
+          {categories.map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setSelectedCategory(cat)}
+              className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all duration-200 shadow-2xs ${
+                selectedCategory === cat
+                  ? 'bg-slate-900 text-white shadow-md shadow-slate-900/10 scale-102'
+                  : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200/80'
+              }`}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* 2. SEPARAÇÃO DOS 2 PRODUTOS MAIS VENDIDOS (ABAIXO DOS FILTROS) */}
       {!loading && top2Products.length > 0 && !searchQuery && (
         <motion.section
-          initial={{ opacity: 0, y: -15 }}
+          initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           className="bg-gradient-to-br from-amber-50/70 via-orange-50/40 to-emerald-50/50 p-4 sm:p-5 rounded-3xl border border-amber-200/80 shadow-xs space-y-3"
         >
@@ -247,7 +286,7 @@ export const POSPage: React.FC = () => {
 
           {/* 2 Top Product Cards */}
           <div className="grid grid-cols-2 gap-3 sm:gap-4">
-            {top2Products.map(({ product, quantitySold, rank }, idx) => {
+            {top2Products.map(({ product, quantitySold, rank }) => {
               const isFirst = rank === 1;
               const price = Number(product.price);
 
@@ -317,47 +356,6 @@ export const POSPage: React.FC = () => {
           </div>
         </motion.section>
       )}
-
-      {/* Header Controls: Search & Category Pills */}
-      <div className="space-y-3">
-        
-        {/* Search input with sleek light look */}
-        <div className="relative">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Buscar produto por nome ou categoria..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-10 py-3 rounded-2xl bg-white border border-slate-200/90 text-sm font-medium text-slate-800 placeholder-slate-400 shadow-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all"
-          />
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery('')}
-              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400 hover:text-slate-600 bg-slate-100 rounded-full w-5 h-5 flex items-center justify-center"
-            >
-              ✕
-            </button>
-          )}
-        </div>
-
-        {/* Category Pills (horizontally scrollable on mobile) */}
-        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
-          {categories.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setSelectedCategory(cat)}
-              className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all duration-200 shadow-2xs ${
-                selectedCategory === cat
-                  ? 'bg-slate-900 text-white shadow-md shadow-slate-900/10 scale-102'
-                  : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200/80'
-              }`}
-            >
-              {cat}
-            </button>
-          ))}
-        </div>
-      </div>
 
       {/* Main Products Grid: Square Cards */}
       {loading ? (

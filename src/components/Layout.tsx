@@ -60,7 +60,7 @@ export const Layout: React.FC = () => {
   return (
     <div className="relative min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans overflow-x-hidden">
       
-      {/* Dynamic Watermark Background (Centered transparent logo) */}
+      {/* Dynamic Watermark Background (Centered transparent logo in the middle of the screen) */}
       <div 
         aria-hidden="true" 
         className="fixed inset-0 flex items-center justify-center pointer-events-none select-none -z-10 overflow-hidden"
@@ -68,12 +68,12 @@ export const Layout: React.FC = () => {
         <img 
           src="/logo.png" 
           alt="Watermark Logo" 
-          className="watermark-bg w-[90vw] max-w-[520px] object-contain opacity-[0.06] filter grayscale-25"
+          className="watermark-bg w-[85vw] max-w-[460px] object-contain opacity-[0.08] filter drop-shadow-sm"
         />
       </div>
 
-      {/* Header */}
-      <header className="sticky top-0 z-30 bg-white/85 backdrop-blur-md border-b border-slate-200/80 shadow-xs px-4 py-3 sm:px-6">
+      {/* Header (Hidden on mobile as requested, visible on desktop) */}
+      <header className="hidden md:block sticky top-0 z-30 bg-white/85 backdrop-blur-md border-b border-slate-200/80 shadow-xs px-4 py-3 sm:px-6">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           
           {/* Logo & Brand */}
